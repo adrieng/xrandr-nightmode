@@ -1,5 +1,5 @@
-CFLAGS= -Wall -O2
-LDFLAGS= -lxcb-randr -lxcb
+CFLAGS=-Wall -O2
+LDFLAGS=-lxcb-randr -lxcb
 
 PREFIX=$(HOME)
 BINDIR=$(PREFIX)/bin

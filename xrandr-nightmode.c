@@ -17,13 +17,21 @@
   Copyright (c) 2017  Adrien Guatto <adrien@guatto.org>
 */
 
+#include <errno.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
+#include <sys/file.h>
+
 #include "gamma_randr.h"
+
+void die(char *message) {
+    perror(message);
+    exit(1);
+}
 
 volatile sig_atomic_t do_disable = 0;
 volatile sig_atomic_t do_switch = 0;
@@ -50,16 +58,12 @@ void setup_signals() {
     sigact.sa_flags = 0;
 
     r = sigaction(SIGINT, &sigact, NULL);
-    if (r < 0) {
-        perror("sigaction");
-        exit(-1);
-    }
+    if (r < 0)
+        die("sigaction");
 
     r = sigaction(SIGTERM, &sigact, NULL);
-    if (r < 0) {
-        perror("sigaction");
-        exit(-1);
-    }
+    if (r < 0)
+        die("sigaction");
 
     /* Install signal handler for USR1 signal */
     sigact.sa_handler = sigswitch_handler;
@@ -67,10 +71,34 @@ void setup_signals() {
     sigact.sa_flags = 0;
 
     r = sigaction(SIGUSR1, &sigact, NULL);
-    if (r < 0) {
-        perror("sigaction");
-        exit(-1);
+    if (r < 0)
+        die("sigaction");
+}
+
+char lock_path[256];
+
+int is_already_running() {
+    int running = 0, pid_file, rc;
+    const char *homedir;
+
+    homedir = getenv("HOME");
+    if (homedir == NULL)
+        die("getenv");
+
+    snprintf(lock_path, sizeof lock_path, "%s/.xrandr-nightmode.lock", homedir);
+    pid_file = open(lock_path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    if (pid_file < 0)
+        die("open");
+
+    rc = flock(pid_file, LOCK_EX | LOCK_NB);
+    if (rc < 0) {
+        if (errno == EWOULDBLOCK)
+            running = 1;
+        else
+            die("flock");
     }
+
+    return running;
 }
 
 int main(int argc, const char *argv[]){
@@ -85,6 +113,12 @@ int main(int argc, const char *argv[]){
         fprintf(stderr, "error while starting randr\n");
         return 1;
     }
+
+    if (is_already_running()) {
+        printf("xrandr-nightmode: already running, exiting\n");
+        return 1;
+    }
+    printf("xrandr-nightmode: switching to background\n");
 
     setup_signals();
 
@@ -105,13 +139,14 @@ int main(int argc, const char *argv[]){
             do_switch = 0;
         }
 
-        if (do_disable) {
+        if (do_disable && enabled) {
             randr_restore(&state);
             break;
         }
     }
 
     randr_free(&state);
+    remove(lock_path);
 
     return 0;
 }
@@ -135,8 +170,8 @@ int nightmode(randr_state_t *state){
     return 0;
 }
 
-void copy_inverted_ramps(const randr_crtc_state_t *crtc_status,
-                         uint16_t *r, uint16_t *g, uint16_t *b);
+void copy_nightmode_ramps(const randr_crtc_state_t *crtc_status,
+                          uint16_t *r, uint16_t *g, uint16_t *b);
 
 int nightmode_for_crtc(randr_state_t *state, int crtc_num){
     xcb_generic_error_t *error;
@@ -157,16 +192,14 @@ int nightmode_for_crtc(randr_state_t *state, int crtc_num){
 
     /* Create new gamma ramps */
     uint16_t *gamma_ramps = malloc(3*ramp_size*sizeof(uint16_t));
-    if (gamma_ramps == NULL) {
-        perror("malloc");
-        return -1;
-    }
+    if (gamma_ramps == NULL)
+        die("malloc");
 
     uint16_t *gamma_r = &gamma_ramps[0*ramp_size];
     uint16_t *gamma_g = &gamma_ramps[1*ramp_size];
     uint16_t *gamma_b = &gamma_ramps[2*ramp_size];
 
-    copy_inverted_ramps(&(state->crtcs[crtc_num]), gamma_r, gamma_g, gamma_b);
+    copy_nightmode_ramps(&(state->crtcs[crtc_num]), gamma_r, gamma_g, gamma_b);
 
     /* Set new gamma ramps */
     xcb_void_cookie_t gamma_set_cookie =
@@ -184,7 +217,7 @@ int nightmode_for_crtc(randr_state_t *state, int crtc_num){
     return 0;
 }
 
-void copy_inverted_ramps(const randr_crtc_state_t *crtc_status,
+void copy_nightmode_ramps(const randr_crtc_state_t *crtc_status,
                          uint16_t *r, uint16_t *g, uint16_t *b){
     unsigned int ramp_size = crtc_status->ramp_size;
     unsigned i;

@@ -2,8 +2,8 @@
 
 This utility imitates the "night mode" feature of f.lux. This changes the color
 of your screen, basically turning white into black and everything else into
-shades of red. I missed this feature when switching from f.lux to redshift, and
-this makes it available on Linux as well.
+shades of red. I had been missing this feature after switching from f.lux to
+Redshift, which does not provide it.
 
 This is very simple code which reuses the hard work of the Redshift project as
 well as Zoltan Padrah's xrandr-invert-colors. Praise to them.
