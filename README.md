@@ -1,9 +1,9 @@
 # Overview
 
-This utility imitates the "night mode" feature of f.lux. This changes the color
+This utility imitates the "night mode" feature of f.lux, which changes the color
 of your screen, basically turning white into black and everything else into
-shades of red. I had been missing this feature after switching from f.lux to
-Redshift, which does not provide it.
+shades of red. This makes reading on a computer screen late at night much more
+enjoyable in my experience.
 
 This is very simple code which reuses the hard work of the Redshift project as
 well as Zoltan Padrah's xrandr-invert-colors. Praise to them.
