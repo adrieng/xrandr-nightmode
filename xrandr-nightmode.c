@@ -139,7 +139,8 @@ int main(int argc, const char *argv[]){
             do_switch = 0;
         }
 
-        if (do_disable && enabled) {
+        if (do_disable) {
+            printf("xrandr-nightmode: quitting\n");
             randr_restore(&state);
             break;
         }
