@@ -30,7 +30,7 @@
 
 void die(char *message) {
     perror(message);
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
 volatile sig_atomic_t do_disable = 0;
@@ -101,9 +101,36 @@ int is_already_running() {
     return running;
 }
 
-int main(int argc, const char *argv[]){
+void print_usage(char *progname) {
+    fprintf(stderr, "Usage: %s [OPTIONS]\n", progname);
+    fprintf(stderr, "Options:\n");
+    fprintf(stderr, "  -f       run in foreground\n");
+    fprintf(stderr, "  -n       switch to night mode immediately\n");
+    fprintf(stderr, "  -h       display this message\n");
+}
+
+int main(int argc, char *argv[]){
     int enabled = 0;
+    int daemonize = 1;
+    int opt;
     randr_state_t state;
+
+    while ((opt = getopt(argc, argv, "fn")) != -1) {
+        switch (opt) {
+        case 'f':
+            daemonize = 0;
+            break;
+        case 'n':
+            do_switch = 1;
+            break;
+        case 'h':
+            print_usage(argv[0]);
+            return 0;
+        default:
+            print_usage(argv[0]);
+            return 1;
+        }
+    }
 
     if (randr_init(&state) < 0){
         fprintf(stderr, "error while init\n");
@@ -116,17 +143,20 @@ int main(int argc, const char *argv[]){
 
     if (is_already_running()) {
         printf("xrandr-nightmode: already running, exiting\n");
+        randr_free(&state);
         return 1;
     }
-    printf("xrandr-nightmode: switching to background\n");
 
     setup_signals();
 
-    daemon(0, 1);
+    if (daemonize) {
+        printf("xrandr-nightmode: switching to background\n");
+        daemon(0, 0);
+    } else {
+        printf("xrandr-nightmode: waiting for signals\n");
+    }
 
     for (;;) {
-        pause();
-
         if (do_switch) {
             if (enabled)
                 randr_restore(&state);
@@ -144,6 +174,8 @@ int main(int argc, const char *argv[]){
             randr_restore(&state);
             break;
         }
+
+        pause();
     }
 
     randr_free(&state);
@@ -154,7 +186,7 @@ int main(int argc, const char *argv[]){
 
 int nightmode_for_crtc(randr_state_t *state, int crtc_num);
 
-int nightmode(randr_state_t *state){
+int nightmode(randr_state_t *state) {
     int r;
 
     /* If no CRTC number has been specified,
@@ -174,7 +206,7 @@ int nightmode(randr_state_t *state){
 void copy_nightmode_ramps(const randr_crtc_state_t *crtc_status,
                           uint16_t *r, uint16_t *g, uint16_t *b);
 
-int nightmode_for_crtc(randr_state_t *state, int crtc_num){
+int nightmode_for_crtc(randr_state_t *state, int crtc_num) {
     xcb_generic_error_t *error;
 
     if (crtc_num >= (int)state->crtc_count || crtc_num < 0) {
@@ -219,7 +251,7 @@ int nightmode_for_crtc(randr_state_t *state, int crtc_num){
 }
 
 void copy_nightmode_ramps(const randr_crtc_state_t *crtc_status,
-                         uint16_t *r, uint16_t *g, uint16_t *b){
+                         uint16_t *r, uint16_t *g, uint16_t *b) {
     unsigned int ramp_size = crtc_status->ramp_size;
     unsigned i;
     for(i = 0; i < ramp_size; i++)

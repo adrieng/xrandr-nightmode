@@ -15,9 +15,9 @@ will copy the binary to $(HOME)/bin/xrandr-nightmode by default.
 
 # Using
 
-When run, xrandr-nightmode silently forks and runs in the background. To turn
-night mode on or off, send it a USR1 signal. The daemon restores the screen to
-its original colors on exit.
+When started, xrandr-nightmode will silently fork and run in the background by
+default. To turn night mode on or off, send it a USR1 signal. The daemon
+restores the screen to its original colors on exit.
 
 ```shell
 $ xrandr-nightmode
@@ -34,6 +34,9 @@ makes the XF86LaunchA multimedia key responsible for enabling/disabling night mo
 ```
 bindsym XF86 exec killall -USR1 xrandr-nightmode
 ```
+
+To keep xrandr-nightmode in the foreground, run it with `-f`. To turn night mode
+on by default, run it with `-n`.
 
 # License
 
