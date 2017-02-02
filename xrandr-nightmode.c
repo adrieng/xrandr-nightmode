@@ -17,6 +17,7 @@
   Copyright (c) 2017  Adrien Guatto <adrien@guatto.org>
 */
 
+#include <assert.h>
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>
@@ -101,12 +102,15 @@ int is_already_running() {
     return running;
 }
 
+int check_in_crtc_range(randr_state_t *state);
+
 void print_usage(char *progname) {
     fprintf(stderr, "Usage: %s [OPTIONS]\n", progname);
     fprintf(stderr, "Options:\n");
-    fprintf(stderr, "  -f       run in foreground\n");
-    fprintf(stderr, "  -n       switch to night mode immediately\n");
-    fprintf(stderr, "  -h       display this message\n");
+    fprintf(stderr, "  -f         run in foreground\n");
+    fprintf(stderr, "  -n         switch to night mode immediately\n");
+    fprintf(stderr, "  -s SCREEN  only apply to SCREEN\n");
+    fprintf(stderr, "  -h         display this message\n");
 }
 
 int main(int argc, char *argv[]){
@@ -114,8 +118,9 @@ int main(int argc, char *argv[]){
     int daemonize = 1;
     int opt;
     randr_state_t state;
+    int crtc_num = -1;
 
-    while ((opt = getopt(argc, argv, "fn")) != -1) {
+    while ((opt = getopt(argc, argv, "fns:")) != -1) {
         switch (opt) {
         case 'f':
             daemonize = 0;
@@ -126,6 +131,9 @@ int main(int argc, char *argv[]){
         case 'h':
             print_usage(argv[0]);
             return 0;
+        case 's':
+            crtc_num = atoi(optarg);
+            break;
         default:
             print_usage(argv[0]);
             return 1;
@@ -136,10 +144,19 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "error while init\n");
         return 1;
     }
+
     if (randr_start(&state) < 0){
         fprintf(stderr, "error while starting randr\n");
         return 1;
     }
+
+    state.crtc_num = crtc_num;
+    if (crtc_num >= 0) {
+        if (!check_in_crtc_range(&state))
+            return 1;
+        fprintf(stderr, "xrandr-nightmode: activated for CRTC %d\n", crtc_num);
+    } else
+        fprintf(stderr, "xrandr-nightmode: activated for all CRTCs\n");
 
     if (is_already_running()) {
         printf("xrandr-nightmode: already running, exiting\n");
@@ -153,18 +170,21 @@ int main(int argc, char *argv[]){
         printf("xrandr-nightmode: switching to background\n");
         daemon(0, 0);
     } else {
-        printf("xrandr-nightmode: waiting for signals\n");
+        printf("xrandr-nightmode: running in foreground\n");
     }
 
     for (;;) {
         if (do_switch) {
-            if (enabled)
+            if (enabled) {
                 randr_restore(&state);
-            else
+                printf("xrandr-nightmode: night mode off\n");
+            } else {
                 if (nightmode(&state) < 0) {
                     fprintf(stderr, "error while setting night mode\n");
                     do_disable = 1;
                 }
+                printf("xrandr-nightmode: night mode on\n");
+            }
             enabled = !enabled;
             do_switch = 0;
         }
@@ -206,19 +226,23 @@ int nightmode(randr_state_t *state) {
 void copy_nightmode_ramps(const randr_crtc_state_t *crtc_status,
                           uint16_t *r, uint16_t *g, uint16_t *b);
 
+int check_in_crtc_range(randr_state_t *state) {
+    if (state->crtc_num >= (int)state->crtc_count) {
+        fprintf(stderr, "xrandr-nightmode: CRTC %d does not exist.\n",  state->crtc_num);
+        if (state->crtc_count > 1) {
+            fprintf(stderr, "xrandr-nightmode: valid CRTCs are [0-%d].\n", state->crtc_count-1);
+        } else {
+            fprintf(stderr, "xrandr-nightmode: only CRTC 0 exists.\n");
+        }
+        return 0;
+    }
+    return 1;
+}
+
 int nightmode_for_crtc(randr_state_t *state, int crtc_num) {
     xcb_generic_error_t *error;
 
-    if (crtc_num >= (int)state->crtc_count || crtc_num < 0) {
-        fprintf(stderr, "CRTC %d does not exist.",  state->crtc_num);
-        if (state->crtc_count > 1) {
-            fprintf(stderr, "Valid CRTCs are [0-%d].\n", state->crtc_count-1);
-        } else {
-            fprintf(stderr, "Only CRTC 0 exists.\n");
-        }
-
-        return -1;
-    }
+    assert(check_in_crtc_range(state));
 
     xcb_randr_crtc_t crtc = state->crtcs[crtc_num].crtc;
     unsigned int ramp_size = state->crtcs[crtc_num].ramp_size;

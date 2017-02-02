@@ -283,27 +283,6 @@ randr_print_help(FILE *f)
 }
 
 int
-randr_set_option(randr_state_t *state, const char *key, const char *value)
-{
-    if (key == NULL) {
-        fprintf(stderr, _("Missing value for parameter: `%s'.\n"),
-                value);
-        return -1;
-    }
-
-    if (strcasecmp(key, "screen") == 0) {
-        state->screen_num = atoi(value);
-    } else if (strcasecmp(key, "crtc") == 0) {
-        state->crtc_num = atoi(value);
-    } else {
-        fprintf(stderr, _("Unknown method parameter: `%s'.\n"), key);
-        return -1;
-    }
-
-    return 0;
-}
-
-int
 randr_set_gamma_for_crtc(randr_state_t *state, int crtc_num,
                          unsigned int gamma_size,
                          const uint16_t *gamma_r, const uint16_t *gamma_g,

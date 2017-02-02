@@ -17,7 +17,8 @@
    Copyright (c) 2010  Jon Lund Steffensen <jonlst@gmail.com>
 
    Edited by Zoltan Padrah <zoltan_padrah@users.sf.net>:
-    Removed Redshift specific parts*/
+   Removed Redshift specific parts
+*/
 
 #ifndef _REDSHIFT_GAMMA_RANDR_H
 #define _REDSHIFT_GAMMA_RANDR_H
@@ -28,23 +29,20 @@
 #include <xcb/xcb.h>
 #include <xcb/randr.h>
 
-// #include "redshift.h"
-
-
 typedef struct {
-	xcb_randr_crtc_t crtc;
-	unsigned int ramp_size;
-	uint16_t *saved_ramps;
+    xcb_randr_crtc_t crtc;
+    unsigned int ramp_size;
+    uint16_t *saved_ramps;
 } randr_crtc_state_t;
 
 typedef struct {
-	xcb_connection_t *conn;
-	xcb_screen_t *screen;
-	int preferred_screen;
-	int screen_num;
-	int crtc_num;
-	unsigned int crtc_count;
-	randr_crtc_state_t *crtcs;
+    xcb_connection_t *conn;
+    xcb_screen_t *screen;
+    int preferred_screen;
+    int screen_num;
+    int crtc_num;
+    unsigned int crtc_count;
+    randr_crtc_state_t *crtcs;
 } randr_state_t;
 
 
@@ -53,23 +51,22 @@ int randr_start(randr_state_t *state);
 void randr_free(randr_state_t *state);
 
 void randr_print_help(FILE *f);
-int randr_set_option(randr_state_t *state, const char *key, const char *value);
 
 void randr_restore(randr_state_t *state);
 
 
 int randr_set_gamma(randr_state_t *state, unsigned int gamma_size,
-						 const uint16_t *gamma_r, const uint16_t *gamma_g,
-						 const uint16_t *gamma_b);
+                    const uint16_t *gamma_r, const uint16_t *gamma_g,
+                    const uint16_t *gamma_b);
 
 
 int randr_set_gamma_for_crtc(randr_state_t *state, int crtc_num,
-						 unsigned int gamma_size,
-						 const uint16_t *gamma_r, const uint16_t *gamma_g,
-						 const uint16_t *gamma_b);
+                             unsigned int gamma_size,
+                             const uint16_t *gamma_r, const uint16_t *gamma_g,
+                             const uint16_t *gamma_b);
 #if 0
 int randr_set_temperature(randr_state_t *state, int temp, float brightness,
-			  float gamma[3]);
+                          float gamma[3]);
 #endif
 
 
