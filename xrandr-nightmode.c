@@ -150,6 +150,12 @@ int main(int argc, char *argv[]){
         return 1;
     }
 
+    if (is_already_running()) {
+        printf("xrandr-nightmode: already running, exiting\n");
+        randr_free(&state);
+        return 1;
+    }
+
     state.crtc_num = crtc_num;
     if (crtc_num >= 0) {
         if (!check_in_crtc_range(&state))
@@ -157,12 +163,6 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "xrandr-nightmode: activated for CRTC %d\n", crtc_num);
     } else
         fprintf(stderr, "xrandr-nightmode: activated for all CRTCs\n");
-
-    if (is_already_running()) {
-        printf("xrandr-nightmode: already running, exiting\n");
-        randr_free(&state);
-        return 1;
-    }
 
     setup_signals();
 
